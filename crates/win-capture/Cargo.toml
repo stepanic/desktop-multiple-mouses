@@ -1,0 +1,13 @@
+[package]
+name = "multi-mouse"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+mm-proto = { path = "../proto" }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+[target.'cfg(windows)'.dependencies]
+libloading = "0.8"
