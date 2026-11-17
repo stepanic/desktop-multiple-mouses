@@ -3,34 +3,36 @@
 Dvoje ljudi, jedan Windows laptop:
 
 - **Osoba A** radi na Windowsu s ugrađenom tipkovnicom i trackpadom laptopa. Ništa se ne mijenja.
-- **Osoba B** na vanjskom monitoru gleda udaljeni Mac (RustDesk) i upravlja njime **vanjskom tipkovnicom i mišem**. Ti uređaji više uopće ne diraju Windows.
+- **Osoba B** na vanjskom monitoru gleda udaljeni Mac (RustDesk) i upravlja njime **vanjskom USB tipkovnicom i mišem**. Ti uređaji više ne diraju Windows.
 
 ```
 Ugrađena tipkovnica + trackpad ──► Windows (normalno)
 
-Vanjska tipkovnica + miš ──► multi-mouse.exe ──Tailscale──► multi-mouse-agent (Mac) ──► macOS
-                              (Interception driver
-                               ih "pojede" za Windows)
+Vanjski USB prijemnik ──► multi-mouse.exe ──Tailscale──► multi-mouse-agent (Mac) ──► macOS
+(WinUSB driver)            (libusb)
 
 RustDesk na vanjskom monitoru = samo prikaz Mac ekrana (View mode)
 ```
+
+📖 **Kako radi, s dijagramima:** [docs/KAKO-RADI.md](docs/KAKO-RADI.md)
+🧭 **Stanje projekta i sljedeći koraci:** [HANDOFF.md](HANDOFF.md)
 
 ## Instalacija
 
 ### Mac (jednom)
 
-1. Kopiraj `multi-mouse-agent` na Mac (npr. u `~/bin/`), pa u Terminalu:
-   ```sh
-   xattr -d com.apple.quarantine ~/bin/multi-mouse-agent 2>/dev/null
-   chmod +x ~/bin/multi-mouse-agent
-   ~/bin/multi-mouse-agent
-   ```
-2. macOS će tražiti **Accessibility** dozvolu: *System Settings → Privacy & Security → Accessibility* → uključi **Terminal** (ili aplikaciju iz koje pokrećeš agenta). Zatim ponovno pokreni agenta.
-3. Agent ispiše **token**. Treba ti za Windows setup.
+```sh
+git clone https://github.com/stepanic/desktop-multiple-mouses.git
+cd desktop-multiple-mouses
+cargo build --release -p multi-mouse-agent     # treba Rust + Xcode Command Line Tools
+./target/release/multi-mouse-agent
+```
 
-Agent prihvaća samo veze s Tailscale adresa (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`), i to samo s ispravnim tokenom.
+Gotov binary možeš skinuti i s GitHub Actions (artifact `multi-mouse-agent-macos`). Nakon skidanja:
+`xattr -d com.apple.quarantine multi-mouse-agent && chmod +x multi-mouse-agent`.
 
-Opcije (`multi-mouse-agent --help`):
+1. macOS traži **Accessibility** dozvolu: *System Settings → Privacy & Security → Accessibility* → uključi Terminal (ili aplikaciju iz koje pokrećeš agenta). Zatim ponovno pokreni agenta.
+2. Agent ispiše **token**. Treba ti za Windows setup.
 
 | opcija | značenje |
 |---|---|
@@ -39,51 +41,49 @@ Opcije (`multi-mouse-agent --help`):
 | `--invert-scroll` | obrnut smjer scrolla |
 | `--ctrl-is-cmd` | PC Ctrl radi kao ⌘ (Ctrl+C / Ctrl+V kopiraju na Macu) |
 | `--swap-iso` | ako su tipka lijevo od `1` i tipka lijevo od `Z` zamijenjene |
+| `--allow-any` | prihvati veze izvan Tailscalea (nije preporučeno) |
 
 ### Windows (jednom)
 
-1. Instaliraj **Interception driver**: otvori *Command Prompt kao administrator*:
-   ```bat
-   cd %USERPROFILE%\multi-mouse\interception-installer
-   install-interception.exe /install
-   ```
-   i **restartaj računalo**.
-2. U mapi `multi-mouse` moraju biti `multi-mouse.exe` i `interception.dll` (x64).
-3. Pokreni `multi-mouse.exe`. Prvi put pokreće setup:
-   1. pritisneš tipku na **vanjskoj** tipkovnici,
-   2. klikneš **vanjskim** mišem,
-   3. upišeš Tailscale ime Maca (npr. `moj-macbook`) ili njegov `100.x.y.z` IP,
-   4. upišeš token s Maca.
+1. Skini [Zadig](https://zadig.akeo.ie/) i pokreni ga (traži administratorska prava).
+2. **Options → List All Devices**.
+3. Odaberi **USB Receiver (Interface 0)**, desno **WinUSB** → **Replace Driver**.
+4. Ponovi za **USB Receiver (Interface 1)**.
+5. `multi-mouse.exe list` mora pokazati `-> spreman za multi-mouse`.
+6. `multi-mouse.exe monitor`: kad tipkaš ili mičeš vanjskim mišem, ispisuju se događaji.
+7. `multi-mouse.exe` (prvi put se pokrene setup) → upiši Tailscale ime Maca i token.
 
-   Postavke se spremaju u `multi-mouse.toml` pored exe-a.
+Od trenutka kad je WinUSB instaliran, vanjska tipkovnica i miš rade **samo kroz multi-mouse**. Laptop tipkovnica i trackpad rade normalno.
 
 ### RustDesk
 
-U RustDesk sesiji prema Macu uključi **View mode** (u alatnoj traci sesije). Tako ni trackpad laptopa ni RustDesk prozor u fokusu ne šalju ništa na Mac. Unos na Mac ide isključivo preko multi-mouse.
+U sesiji prema Macu uključi **View mode**. Tako trackpad laptopa ne upravlja Macom preko RustDeska.
 
 ## Korištenje
 
-- `multi-mouse.exe`: pokreni. Dok je prozor otvoren, vanjski uređaji idu na Mac.
-- **Ctrl+Alt+F12** na vanjskoj tipkovnici prebacuje vanjske uređaje Mac ↔ Windows.
-- Zatvoriš prozor i sve se vraća na normalno.
-- `multi-mouse.exe setup`: ponovno odabereš uređaje ili Mac.
-- `multi-mouse.exe list`: ispiše sve tipkovnice i miševe s hardverskim ID-jevima.
+| naredba | što radi |
+|---|---|
+| `multi-mouse.exe` | pokreni (vanjski uređaji idu na Mac) |
+| **Ctrl+Alt+F12** na vanjskoj tipkovnici | prebaci vanjske uređaje Mac ↔ Windows |
+| `multi-mouse.exe setup` | ponovno odaberi uređaj ili Mac |
+| `multi-mouse.exe list` | USB HID uređaji i njihovi driveri |
+| `multi-mouse.exe monitor [vid:pid]` | samo ispisuj događaje (test, bez mreže) |
 
-Ako veza s Macom pukne, Mac otpusti sve držane tipke i tipke miša, a Windows aplikacija se sama ponovno spaja.
+## Vraćanje na normalno
 
-## Poznata ograničenja
-
-- Uređaji se prepoznaju po hardverskom ID-u. Ako vanjski miš i trackpad imaju isti ID (rijetko), setup upozori.
-- Interception driver vidi najviše 10 tipkovnica i 10 miševa. Poznat je bug u kojem nakon jako puno spajanja i odspajanja USB uređaja novi uređaji ne rade do restarta.
-- Pomak miša šalje se kao sirovi pomak uređaja bez Windows akceleracije. Brzinu podesi s `--speed` na Macu.
+Device Manager → *Universal Serial Bus devices* → **USB Receiver** → desni klik → **Uninstall device** (uključi *Attempt to remove the driver for this device*). Ponovi za oba sučelja, pa izvuci i vrati prijemnik. Windows opet koristi standardni HID driver.
 
 ## Build
 
-- **Windows exe iz WSL/Linuxa:** `scripts/build-windows-from-wsl.sh` (treba [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) u `~/.local/toolchains`)
-- **Mac agent:** `cargo build --release -p multi-mouse-agent` na Macu, ili GitHub Actions (`.github/workflows/build.yml` gradi oba, a na tagu `v*` napravi release)
+| što | kako |
+|---|---|
+| Windows exe iz WSL/Linuxa | `scripts/build-windows-from-wsl.sh` (treba [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) u `~/.local/toolchains`) |
+| Mac agent | `cargo build --release -p multi-mouse-agent` na Macu |
+| oboje | GitHub Actions (`.github/workflows/build.yml`), a tag `v*` napravi release |
+| test Windows strane bez Maca | `python3 scripts/fake-agent.py <token>` pa u `multi-mouse.toml` `mac_address = "127.0.0.1"` |
 
 Struktura:
 
 - `crates/proto`: mrežni protokol (zajednički)
-- `crates/win-capture`: `multi-mouse.exe` (Interception + slanje)
-- `crates/mac-agent`: `multi-mouse-agent` (CGEvent injekcija)
+- `crates/win-capture`: `multi-mouse.exe` (libusb, HID parser, router, mreža)
+- `crates/mac-agent`: `multi-mouse-agent` (CGEvent)

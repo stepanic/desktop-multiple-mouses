@@ -7,10 +7,9 @@ pub struct Config {
     pub mac_address: String,
     /// Token printed by `multi-mouse-agent` on the Mac.
     pub token: String,
-    /// Hardware IDs of keyboards whose input goes to the Mac.
-    pub keyboard_ids: Vec<String>,
-    /// Hardware IDs of mice whose input goes to the Mac.
-    pub mouse_ids: Vec<String>,
+    /// USB device (VID:PID in hex, e.g. "046d:c534") whose input goes to the Mac.
+    /// It must use the WinUSB driver (installed with Zadig).
+    pub usb_device: String,
 }
 
 impl Config {
@@ -39,6 +38,10 @@ impl Config {
         Ok(path)
     }
 
+    pub fn vid_pid(&self) -> Result<(u16, u16), String> {
+        parse_vid_pid(&self.usb_device).ok_or_else(|| format!("neispravan usb_device '{}' (očekujem npr. 046d:c534)", self.usb_device))
+    }
+
     /// `mac_address` with the default port appended when missing.
     pub fn socket_address(&self) -> String {
         let a = self.mac_address.trim();
@@ -57,12 +60,17 @@ impl Config {
     }
 }
 
+pub fn parse_vid_pid(s: &str) -> Option<(u16, u16)> {
+    let (v, p) = s.trim().split_once(':')?;
+    Some((u16::from_str_radix(v, 16).ok()?, u16::from_str_radix(p, 16).ok()?))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn cfg(addr: &str) -> Config {
-        Config { mac_address: addr.into(), token: String::new(), keyboard_ids: vec![], mouse_ids: vec![] }
+        Config { mac_address: addr.into(), token: String::new(), usb_device: String::new() }
     }
 
     #[test]
@@ -71,5 +79,11 @@ mod tests {
         assert_eq!(cfg("100.1.2.3:9000").socket_address(), "100.1.2.3:9000");
         assert_eq!(cfg("fd7a::1").socket_address(), "[fd7a::1]:47800");
         assert_eq!(cfg("[fd7a::1]:5").socket_address(), "[fd7a::1]:5");
+    }
+
+    #[test]
+    fn vid_pid() {
+        assert_eq!(parse_vid_pid("046d:c534"), Some((0x046d, 0xc534)));
+        assert_eq!(parse_vid_pid("nope"), None);
     }
 }

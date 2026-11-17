@@ -14,5 +14,6 @@ if [ ! -f "$SHIM/libgcc_eh.a" ]; then
 fi
 export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-clang
 export RUSTFLAGS="-L $SHIM"
+export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-clang AR_x86_64_pc_windows_gnu=llvm-ar
 cargo build --release --target x86_64-pc-windows-gnu -p multi-mouse
 echo "-> target/x86_64-pc-windows-gnu/release/multi-mouse.exe"
