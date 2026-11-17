@@ -272,3 +272,8 @@ flowchart TB
     W4 --> R1[RustDesk prema Macu: View mode<br/>na vanjskom monitoru]
     R1 --> DONE([✅ dvoje ljudi radi istovremeno])
 ```
+
+## Vezani dokumenti
+
+- [2026-11-17-odluke-i-zamke.md](2026-11-17-odluke-i-zamke.md): zašto baš ovako, što je odbačeno i koje su zamke
+- [../HANDOFF.md](../HANDOFF.md): stanje projekta i sljedeći koraci

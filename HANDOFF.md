@@ -79,3 +79,8 @@ cargo build --release -p multi-mouse-agent
 - `crates/win-capture`: `usb.rs` (libusb + provjera WinUSB-a u registryju, jer libusb-ov HID backend "otvori" i uređaje s Windows driverom) → `hid.rs` (parser report descriptora) → `translate.rs` (snimka stanja → pritisak/otpuštanje) → `app.rs` Router (Mac/Windows način, Ctrl+Alt+F12, auto-repeat 500/33 ms) → `net.rs` (TCP, spajanje pomaka, ping, reconnect) ili `inject.rs` (`SendInput`).
 - `crates/mac-agent`: prihvaća samo Tailscale IP-ove i ispravan token, prevodi scan code u Mac keycode po fizičkom položaju i šalje CGEvente na `kCGHIDEventTap`. Sam prati modifikatore, dvoklik i drag. Na disconnect otpušta sve.
 - `crates/proto`: `MMUS` hello + token, zatim poruke s tagovima 1–6.
+
+## Vezani dokumenti
+
+- [docs/KAKO-RADI.md](docs/KAKO-RADI.md): kako sustav radi, s Mermaid dijagramima
+- [docs/2026-11-17-odluke-i-zamke.md](docs/2026-11-17-odluke-i-zamke.md): odbačene alternative i zamke (libusb HID backend, llvm-mingw, HVCI)
